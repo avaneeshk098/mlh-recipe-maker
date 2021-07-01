@@ -1,63 +1,102 @@
 import Head from 'next/head'
+import { useState, useEffect } from 'react'
+import Product from './components/product'
 
 export default function Home() {
+  const [ingredients, setIngredients] = useState([])
+
+  const [currIng, setCurrIng] = useState("")
+  const updateIng = (e) => {
+    setCurrIng(e.target.value)
+  }
+
+  const [list, setList] = useState([])
+
+  const [recipeList, setRecipeList] = useState([])
+
+  useEffect(() => {
+    setList(ingredients.map((ig) => {
+      return <li>{ig}</li>
+    }))
+    setCurrIng("")
+  }, [ingredients])
+
+  const addToList = () => {
+    if(currIng.length > 0){ 
+      setIngredients([...ingredients, currIng] )
+    }
+    else{
+      alert("The ingredients field is empty!")
+    }
+  }
+
+  const clearList = () => {
+    setIngredients([])
+  }
+
+  const fetchRecipes = () => {
+      var ingredientString = ""
+      ingredientString += ingredients.pop()
+      ingredients.forEach(ing => {
+        ingredientString += ",+"
+        ingredientString += ing
+      })
+      fetch('./api/main', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ingredientList: ingredientString})
+      })
+      .then(response => {
+        return response.json()
+      })
+      .then(data => {      
+        setRecipeList(data.map((recipe) => {
+          const recipeItems = []
+          recipe.usedIngredients.forEach(ing => recipeItems.push(ing.originalString))
+          recipe.missedIngredients.forEach(ing => {      
+            recipeItems.push(ing.originalString) 
+          })
+          return (
+            <Product key={recipe.id} name={recipe.title} imageURL = {recipe.image} usedIng={recipe.usedIngredientCount} missingIng={recipe.missedIngredientCount} ingredients={recipeItems}/>
+          )
+        }))
+      })
+      .catch((e) => console.error(e));
+  }
+
   return (
     <div className="container">
       <Head>
-        <title>Create Next App</title>
+        <title>Recipe Maker</title>
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
       <main>
         <h1 className="title">
-          Welcome to <a href="https://nextjs.org">Next.js!</a>
+          Welcome to <a href="#">Recipe Maker!</a>
         </h1>
 
         <p className="description">
-          Get started by editing <code>pages/index.js</code>
+          Get started by entering the ingredients you have!
         </p>
 
-        <div className="grid">
-          <a href="https://nextjs.org/docs" className="card">
-            <h3>Documentation &rarr;</h3>
-            <p>Find in-depth information about Next.js features and API.</p>
-          </a>
-
-          <a href="https://nextjs.org/learn" className="card">
-            <h3>Learn &rarr;</h3>
-            <p>Learn about Next.js in an interactive course with quizzes!</p>
-          </a>
-
-          <a
-            href="https://github.com/vercel/next.js/tree/master/examples"
-            className="card"
-          >
-            <h3>Examples &rarr;</h3>
-            <p>Discover and deploy boilerplate example Next.js projects.</p>
-          </a>
-
-          <a
-            href="https://vercel.com/import?filter=next.js&utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className="card"
-          >
-            <h3>Deploy &rarr;</h3>
-            <p>
-              Instantly deploy your Next.js site to a public URL with Vercel.
-            </p>
-          </a>
+        <form onSubmit={(e)=>e.preventDefault()}>
+          <input type="text" placeholder="Enter Ingredient Name" onChange={updateIng} value={currIng}/>
+          <button onClick={addToList}>Add</button>
+          <button onClick={fetchRecipes}>Submit</button>
+          <button onClick={clearList}>Clear</button>
+        </form>
+        <h3 className="desctitle description">Your ingredient list</h3>
+        <ul id="list" className="list">
+          {list}
+        </ul>
+        <div>
+          {recipeList}
         </div>
       </main>
-
-      <footer>
-        <a
-          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Powered by{' '}
-          <img src="/vercel.svg" alt="Vercel" className="logo" />
-        </a>
-      </footer>
 
       <style jsx>{`
         .container {
@@ -67,9 +106,21 @@ export default function Home() {
           flex-direction: column;
           justify-content: center;
           align-items: center;
+          background-color: #fff;
+          color: #000;
         }
 
+        .desctitle{
+          margin-bottom: 0;
+        }
+
+        .list{
+          margin-bottom: 1rem;
+        }
+
+
         main {
+          
           padding: 5rem 0;
           flex: 1;
           display: flex;
